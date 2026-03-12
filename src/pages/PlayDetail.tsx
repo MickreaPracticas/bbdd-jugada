@@ -2,8 +2,7 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { plays } from '@/data/plays';
 import TacticalPitch from '@/components/TacticalPitch';
-// import HeatMap from '@/components/HeatMap';
-import { Play } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 const PlayDetail = () => {
   const { id } = useParams();
@@ -19,6 +18,8 @@ const PlayDetail = () => {
   }
 
   const related = plays.filter(p => p.tipo === play.tipo && p.id !== play.id).slice(0, 3);
+
+  const aiAnalysis = `Esta jugada explota la desorganización defensiva en transiciones rápidas tras córner. La estructura en tren genera bloqueos en cadena que liberan al rematador en el segundo palo con ventaja posicional clara. El timing entre el bloqueador y el rematador es el factor crítico: una diferencia de 0.3 segundos puede anular completamente la ventaja. Recomendada contra defensas zonales con tendencia a salir al primer palo.`;
 
   return (
     <div className="min-h-screen bg-background">
@@ -70,14 +71,6 @@ const PlayDetail = () => {
                 <span className="tag-gray">{play.jugadores.length} jugadores</span>
               </div>
             </div>
-
-            {/* Heat map */}
-            {/* <div>
-              <span className="text-[10px] font-bold tracking-[0.2em] text-primary uppercase">MAPA DE CALOR</span>
-              <div className="mt-3 rounded-md overflow-hidden border border-border">
-                <HeatMap tipo={play.tipo} />
-              </div>
-            </div> */}
 
             {/* Description */}
             <div>
@@ -176,6 +169,17 @@ const PlayDetail = () => {
                   ))}
                 </div>
               </div>
+
+              {/* AI Analysis */}
+              <div className="rounded-md border border-primary/30 p-6" style={{ backgroundColor: 'hsl(0, 0%, 6.7%)' }}>
+                <div className="flex items-center gap-2 mb-4">
+                  <Sparkles size={14} className="text-primary" />
+                  <span className="text-[10px] font-bold tracking-[0.2em] text-primary uppercase">Análisis IA</span>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">{aiAnalysis}</p>
+                <p className="text-[10px] text-muted-foreground/50 mt-3">Generado automáticamente · Gemini AI</p>
+              </div>
+
             </div>
           </div>
         </div>
