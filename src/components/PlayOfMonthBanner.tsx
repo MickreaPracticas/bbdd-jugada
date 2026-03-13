@@ -1,13 +1,48 @@
-import React from 'react';
-import { plays, Play } from '@/data/plays';
+import React, { useState, useEffect } from 'react';
+import { plays as localPlays } from '@/data/plays';
+import { fetchPlays, StrapiPlay } from '@/lib/api';
 import TacticalPitch from './TacticalPitch';
 
 interface PlayOfMonthBannerProps {
   onNavigate: (id: string) => void;
 }
 
+function mapStrapiPlay(p: StrapiPlay) {
+  return {
+    id: String(p.id),
+    nombre: p.attributes.title || '',
+    tipo: p.attributes.abp_type?.data?.attributes?.name || '',
+    zona: p.attributes.zone?.data?.attributes?.name || '',
+    dificultad: p.attributes.difficulty || 'Media',
+    descripcion: p.attributes.description || '',
+    equipo: '',
+    partido: '',
+    fecha: '',
+    jugadores: [],
+    movimientos: [],
+    esJugadaDelMes: false,
+  };
+}
+
 const PlayOfMonthBanner: React.FC<PlayOfMonthBannerProps> = ({ onNavigate }) => {
-  const play = plays.find(p => p.esJugadaDelMes);
+  const [play, setPlay] = useState<any>(null);
+
+  useEffect(() => {
+    fetchPlays()
+      .then(data => {
+        if (data.length > 0) {
+          // Strapi no tiene esJugadaDelMes todavía — usamos la primera jugada
+          // Cuando el cliente defina cuál es la jugada del mes, Dev 2 añade ese campo
+          setPlay(mapStrapiPlay(data[0]));
+        }
+      })
+      .catch(() => {
+        // Strapi no disponible — usar datos locales
+        const local = localPlays.find(p => p.esJugadaDelMes);
+        if (local) setPlay(local);
+      });
+  }, []);
+
   if (!play) return null;
 
   return (

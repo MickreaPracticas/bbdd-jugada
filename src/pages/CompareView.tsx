@@ -1,15 +1,67 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { plays } from '@/data/plays';
+import { plays as localPlays } from '@/data/plays';
+import { fetchPlayById, StrapiPlay } from '@/lib/api';
 import TacticalPitch from '@/components/TacticalPitch';
+import { Loader2 } from 'lucide-react';
+
+// Mismo mapper que en Index.tsx y PlayDetail.tsx
+function mapStrapiPlay(p: StrapiPlay) {
+  return {
+    id: String(p.id),
+    nombre: p.attributes.title || '',
+    tipo: p.attributes.abp_type?.data?.attributes?.name || '',
+    zona: p.attributes.zone?.data?.attributes?.name || '',
+    dificultad: p.attributes.difficulty || 'Media',
+    descripcion: p.attributes.description || '',
+    ai_analysis: p.attributes.ai_analysis || '',
+    video_url: p.attributes.video_url || '',
+    tactical_diagram: p.attributes.tactical_diagram?.data?.attributes?.url || null,
+    etiquetas: p.attributes.tags?.data?.map(t => t.attributes.name) || [],
+    equipo: '',
+    partido: '',
+    fecha: '',
+    situacion: '',
+    jugadores: [],
+    movimientos: [],
+    variantes: [],
+    ventajas: [],
+    riesgos: [],
+    esJugadaDelMes: false,
+  };
+}
 
 const CompareView = () => {
   const { ids } = useParams();
   const navigate = useNavigate();
 
-  const playIds = ids?.split('-vs-') || [];
-  const playA = plays.find(p => p.id === playIds[0]);
-  const playB = plays.find(p => p.id === playIds[1]);
+  const [playA, setPlayA] = useState<any>(null);
+  const [playB, setPlayB] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const playIds = ids?.split('-vs-') || [];
+    if (playIds.length < 2) { setLoading(false); return; }
+
+    // Carga las dos jugadas en paralelo desde Strapi
+    // Si falla, busca en datos locales
+    Promise.all([
+      fetchPlayById(playIds[0]).then(mapStrapiPlay).catch(() => localPlays.find(p => p.id === playIds[0]) || null),
+      fetchPlayById(playIds[1]).then(mapStrapiPlay).catch(() => localPlays.find(p => p.id === playIds[1]) || null),
+    ]).then(([a, b]) => {
+      setPlayA(a);
+      setPlayB(b);
+    }).finally(() => setLoading(false));
+  }, [ids]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center gap-2 text-muted-foreground">
+        <Loader2 size={16} className="animate-spin" />
+        <span className="text-sm">Cargando comparación...</span>
+      </div>
+    );
+  }
 
   if (!playA || !playB) {
     return (
@@ -27,7 +79,7 @@ const CompareView = () => {
   if (playA.equipo !== playB.equipo) diffFields.push({ label: 'Equipo', a: playA.equipo, b: playB.equipo });
   if (playA.jugadores.length !== playB.jugadores.length) diffFields.push({ label: 'Jugadores', a: `${playA.jugadores.length}`, b: `${playB.jugadores.length}` });
 
-  const renderColumn = (play: typeof playA) => (
+  const renderColumn = (play: any) => (
     <div className="flex-1 min-w-0">
       <h2 className="text-lg font-bold text-foreground">{play.nombre}</h2>
       <div className="flex gap-2 mt-2">
@@ -35,7 +87,11 @@ const CompareView = () => {
         <span className="tag-gray">{play.zona}</span>
       </div>
       <div className="mt-4 rounded-md overflow-hidden border border-border">
-        <TacticalPitch jugadores={play.jugadores} movimientos={play.movimientos} size="lg" showRoles />
+        {play.tactical_diagram ? (
+          <img src={play.tactical_diagram} alt="Diagrama táctico" className="w-full" />
+        ) : (
+          <TacticalPitch jugadores={play.jugadores} movimientos={play.movimientos} size="lg" showRoles />
+        )}
       </div>
       <div className="grid grid-cols-2 gap-2 mt-4">
         {[
@@ -55,7 +111,7 @@ const CompareView = () => {
       <div className="mt-4">
         <h4 className="text-xs font-semibold text-foreground mb-2">VENTAJAS</h4>
         <ul className="space-y-1">
-          {play.ventajas.map((v, i) => (
+          {play.ventajas.map((v: string, i: number) => (
             <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
               <span className="text-success">✓</span> {v}
             </li>
@@ -65,7 +121,7 @@ const CompareView = () => {
       <div className="mt-4">
         <h4 className="text-xs font-semibold text-foreground mb-2">RIESGOS</h4>
         <ul className="space-y-1">
-          {play.riesgos.map((r, i) => (
+          {play.riesgos.map((r: string, i: number) => (
             <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
               <span className="text-warning">✕</span> {r}
             </li>
@@ -82,7 +138,6 @@ const CompareView = () => {
           <button onClick={() => navigate('/')} className="text-sm text-primary hover:underline">← Volver</button>
         </div>
       </header>
-
       <div className="max-w-7xl mx-auto px-6 py-8">
         <h1 className="text-xl font-bold text-foreground mb-8">Comparación de jugadas</h1>
         <div className="flex gap-6">
@@ -90,7 +145,6 @@ const CompareView = () => {
           <div className="w-px shrink-0" style={{ backgroundColor: 'hsl(0, 0%, 11.8%)' }} />
           {renderColumn(playB)}
         </div>
-
         {diffFields.length > 0 && (
           <div className="mt-12 border-t border-border pt-8">
             <span className="text-[10px] font-bold tracking-[0.2em] text-primary uppercase">DIFERENCIAS CLAVE</span>
